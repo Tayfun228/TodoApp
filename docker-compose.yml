@@ -1,0 +1,95 @@
+version: '3.7'
+
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    restart: "always"
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./nginx/vhost/:/etc/nginx/vhost.d:ro
+      - ./nginx/conf.d/client_max_body_size.conf:/etc/nginx/conf.d/client_max_body_size.conf:ro
+      - ./static/:/code/static/
+      # - ./media/:/code/media/
+
+  postgres:
+    image: postgres
+    volumes:
+      - ./postgresdb/:/var/lib/postgresql/data
+    ports: 
+      - "5432:5432"
+    environment: 
+      POSTGRES_DB: 'todo_db_name'
+      POSTGRES_USER: 'todo_db_user'
+      POSTGRES_PASSWORD: 'huyahuy123'
+    env_file: ./.venv
+
+
+  # web:
+  #   build: .
+  #   # restart: "always"
+  #   ports: 
+  #     - 8000:8000
+  #   volumes: 
+  #     - .:/code
+  #     - ./static/:/code/static/
+  #   depends_on: 
+  #     - "postgres"
+  #   environment: 
+  #     # - DEBUG=False
+  #     - DJANGO_SETTINGS_MODULE=todo.settings
+
+
+  daphne:
+    build: .
+    image: "todo:latest"
+    # working_dir: /opt/todo
+    volumes: 
+      - .:/code
+      - ./static/:/code/static/
+    command: bash -c "daphne -b 0.0.0.0 -p 8000 todo.asgi:application"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    links:
+      - redis
+    env_file: ./.venv
+    # environment: 
+    #   - DEBUG=False
+    #   - PROD=False
+      # - REDIS_HOST='redis'
+      # - DJANGO_SETTINGS_MODULE=todo.settings
+
+  redis:
+    image: redis
+    restart: "always"
+    # hostname: '127.0.0.1'
+    command: --port 6381
+    ports: 
+      - 6381:6381
+    env_file: ./.venv 
+
+
+  celery:
+    build: .
+    command: celery -A todo worker -l info
+    volumes:
+      - .:/code
+    depends_on:
+      - postgres
+      - redis
+      - daphne
+    env_file: ./.venv
+
+  # celery-beat:
+  #   build: .
+  #   command: celery -A todo beat -l info
+  #   volumes:
+  #     - .:/code
+  #   depends_on:
+  #     - postgres
+  #     - redis
+  #     - daphne

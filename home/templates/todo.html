@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="side_bar">
+        <div class="container">
+            <input id="bar_input" type="text">
+            <div class="flex-end">
+                <button class="delete_task">Delete</button>
+            </div>
+            <h4>Share with</h4>
+            <input name="user" placeholder="Username" type="text">
+            <select name="status">
+                <option value="1">Allow to view only</option>
+                <option value="2">Allow to view and write a comment</option>
+            </select>
+            <button class="search_user">Share</button>
+            <div style="margin-top:20px; display: flex;flex-wrap: wrap;" class="tags">
+                <!-- <tag>asd</tag> -->
+            </div>
+        </div>
+    </div>
+    <form action="POST">
+        <input name="title" type="text">
+        <button type="submit">SUBMIT</button>
+    </form>
+    <div class="flex-column tasks" >
+        {% for object in objects %}
+            <p share='{% for user in object.share.all %}{{user}} {% endfor %}' class="task" value='{{object.title}}' id="{{object.id}}" created_at='{{object.created_at}}' onclick="open_bar('{{object.id}}',this)" type="text">{{object.title}}</p>
+            
+
+        {% endfor %}
+    </div>
+{% endblock %}
+
+{% block js %}
+
+    <script>
+        var task_id
+        var token='{{csrf_token}}'
+        function task_edit(thi=this){
+            title=$(thi).val()
+
+            var formData = {
+                'title' : title,
+                // 'csrfmiddlewaretoken':token,
+            };
+            console.log(formData)
+            $.ajax({
+                method : 'PATCH',
+                url: `http://127.0.0.1:8000/api/task/${task_id}/`, 
+                data : formData, 
+                headers:{
+                    'X-CSRFToken': token,
+                    'Access-Control-Allow-Origin':'http://localhost:8000',
+                    'Access-Control-Allow-Credentials':'true',
+                },
+                success : function(e){
+                    console.log(e);
+                    $(`.task[id ="${task_id}"]`).text(title)
+                },
+                error:function(e){
+                    console.log(e);
+                }
+
+            })
+            
+        }
+
+        $('.delete_task').click(function(){
+            alert("YES")
+            $.ajax({
+                method : 'DELETE',
+                url: `http://127.0.0.1:8000/api/task/${task_id}/`, 
+                headers:{
+                    'X-CSRFToken': token,
+                },
+                success : function(e){
+                    console.log(e);
+                    $(`.task[id ="${task_id}"]`).remove()
+                    close_bar()
+                },
+                error:function(e){
+                    console.log(e);
+                }
+
+            })
+        })
+        $("#bar_input").on('keyup',function(e){
+
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                task_edit(this)
+
+            }
+        })
+        $("#bar_input").focusout(function(){
+            task_edit(this)
+        })
+
+        function open_bar(id,element){
+            $('.side_bar').addClass('open_bar')
+            $('#bar_input').val($(element).attr('value'))
+            task_id=id
+        }
+        function close_bar(){
+            $('.side_bar').removeClass('open_bar')
+        }
+    </script>
+    <!-- Search -->
+    <script>
+        $('.search_user').click(function(){
+            var username=$("input[name='user']").val()
+            var status=document.querySelector("select[name='status']").value;
+
+            $.ajax({
+                method : 'GET',
+                url: `http://127.0.0.1:8000/api/share/?username=${username}&task_id=${task_id}&status=${status}`, 
+                headers:{
+                    'X-CSRFToken': token,
+                },
+                success : function(e){
+                    alert(e['succes'])
+                },
+                error:function(e){
+                    alert(e['responseJSON']['error']);
+                }
+
+            })
+            $("input[name='user']").val('')
+        })
+    </script>
+
+    <script>
+        $(document).ready(function(){
+            $('form').submit(function(event){
+                var formData = {
+                    'title' : $('input[name=title]').val(),
+                };
+                $.ajax({
+                    method : 'POST',
+                    url: 'http://127.0.0.1:8000/api/task/', 
+                    data : formData, 
+                    headers:{
+                        'X-CSRFToken': token,
+                        'Authorization':token,
+                    },
+                    success : function(object){
+                        console.log(object);
+                        document.querySelector('.tasks').innerHTML+=`<p class="task" value='${object.title}' id="${object.id}" created_at='${object.created_at}' onclick="open_bar('${object.id}',this)" type="text">${object.title}</p>`
+                    },
+                    error:function(e){
+                        console.log(e);
+                    }
+
+                })
+                event.preventDefault();
+            });
+
+        });
+    </script>
+{% endblock %}

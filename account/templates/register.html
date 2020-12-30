@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <form action="" method="POST">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="flex-column">
+                {{field.label}} 
+                {{field}}
+                {{field.errors}}    
+            </div>
+        {% endfor %}
+        <button type="submit">SUBMIT</button>
+    </form>
+{% endblock %}

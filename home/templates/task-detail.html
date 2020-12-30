@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="side_bar">
+        <div class="container">
+            <input id="bar_input" type="text">
+            <div class="flex-end">
+                <button class="edit_task">Edit</button>
+            </div>
+
+        </div>
+    </div>
+    <div class="flex-column tasks" >
+        <p>{{object}}</p>
+    </div>
+    <div class="flex-column comments" >
+        <h5>Comments</h5>
+        {% for comment in object.comments.all %}
+            <div key='{{comment.id}}' class="comment-con align-center">
+                <p class="comment-p" key="{{comment.id}}" >{{comment.text}}</p>
+                {% if request.user == comment.user %}
+                    <button onclick="open_bar('{{comment.id}}',element=this)" class="edit_msg">Edit</button>
+                    <button onclick="delete_msg(e=this)" class="delete_msg" key='{{comment.id}}'>Delete</button>
+                {% elif object.user == request.user %}
+                    <button onclick="delete_msg(e=this)" class="delete_msg" key='{{comment.id}}'>Delete</button>
+                {% endif %}
+            </div>
+        {% endfor %}
+        <!-- <input name="comment" style="padding: 5px;" placeholder="Write something..." type="text"> -->
+        <!-- <button class="comment" style="margin:10px 0;width: min-content; padding: 5px;">Submit</button> -->
+
+        <!-- COMMENTS -->
+    </div>
+        {% if request.user != object.user %}
+            <input id="chat-message-input" type="text" size="100"><br>
+            <input id="chat-message-submit" type="button" value="Send">
+        {% else %}
+            <input id="chat-message-input" style="display: none;" type="text" size="100"><br>
+            <input id="chat-message-submit" style="display: none;" type="button" value="Send">
+        {% endif %}
+        {{ room_name|json_script:"room-name" }}
+    {% endblock %}
+
+{% block js %}
+    <script>
+        const user_id='{{request.user.id}}'
+        const task_id='{{object.id}}'
+        var message_id= NaN
+
+        
+        const roomName = JSON.parse(document.getElementById('room-name').textContent);
+        const chatSocket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/ws/chat/'
+            + roomName
+            + '/'
+        );
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            console.log(data);
+            action=data.action
+            if(action == 'message'){
+                if(user_id == data.user_id){
+                    $('.comments').append(`<div key='${data.message_id}' class="comment-con align-center">
+                <p class="comment-p" key="${data.message_id}"=>${data.message}</p>
+                    <button onclick="open_bar('${data.message_id}',element=this)" class="edit_msg">Edit</button>
+                    <button id="delete_msg" onclick='delete_msg(e=this)' class="delete_msg" key='${data.message_id}'>Delete</button>
+            </div>`);
+                }
+                else if(user_id == "{{object.user.id}}"){
+                    $('.comments').append(`<div key='${data.message_id}' class="comment-con align-center">
+                <p class="comment-p" key="${data.message_id}"=>${data.message}</p>
+                    <button id="delete_msg" onclick='delete_msg(e=this)' class="delete_msg" key='${data.message_id}'>Delete</button>
+            </div>`);
+                }
+                else{
+                    document.querySelector('.comments').innerHTML += `<div key='${data.message_id}' class="comment-con space-between">
+                <p class="comment-p" key="${data.message_id}">${data.message}</p>
+            </div>`;
+                }
+            }
+            else if(action == 'delete'){
+                $(`.comment-con[key=${data.message_id}]`).remove()
+                if (message_id==data.message_id){
+                    close_bar()
+                }
+            }
+            else if(action == 'edit'){
+                // console.log(document.querySelector(`.comment-p[key='${data.message_id}']`));
+                document.querySelector(`p.comment-p[key='${data.message_id}']`).innerText=`${data.message}`
+
+
+            }
+
+
+        };
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+        document.querySelector('#chat-message-input').focus();
+        document.querySelector('#chat-message-input').onkeyup = function(e) {
+            if (e.keyCode === 13) {  // enter, return
+                document.querySelector('#chat-message-submit').click();
+            }
+        };
+        document.querySelector('#chat-message-submit').onclick = function(e) {
+            const messageInputDom = document.querySelector('#chat-message-input');
+            const message = messageInputDom.value;
+            chatSocket.send(JSON.stringify({
+                'action':'message',
+                'message': message,
+                'user_id': user_id,
+                'task_id': task_id,
+            }));
+            messageInputDom.value = '';
+        };
+        // MESSAGE Delete
+        function delete_msg(e){
+            // alert('gonderdi')
+            var message_id=$(e).attr('key')
+            chatSocket.send(JSON.stringify({
+                'action':'delete',
+                'message_id': message_id,
+                'user_id': user_id,
+                'task_id': task_id,
+
+            }));
+        }
+    </script>   
+    <script>
+        $('.edit_task').on('click',function(){
+            message= $('#bar_input').val()
+            chatSocket.send(JSON.stringify({
+                'action':'edit',
+                'message_id': message_id,
+                'user_id': user_id,
+                'message': message,
+                'task_id': task_id,
+
+            }));
+        })
+
+        function open_bar(id,element){
+            $('.side_bar').addClass('open_bar')
+            message_id=id
+            $('#bar_input').val(document.querySelector(`p.comment-p[key='${message_id}']`).innerText)
+
+
+        }
+        function close_bar(){
+            $('.side_bar').removeClass('open_bar')
+        }
+    </script>
+{% endblock %}
