@@ -7,7 +7,18 @@
             <div class="flex-end">
                 <button class="delete_task">Delete</button>
             </div>
-            <h4>Share with</h4>
+            <input type="text" name="description" id="">
+            <div class="flex-end">
+                <button class="description_task">Change description</button>
+            </div>
+
+            <input name='expired_at' type="datetime-local" name="" id="">
+            <div class="flex-end">
+                <button class="deadline_task">Set time</button>
+            </div>
+
+
+            <h4 style="margin-top: 20px;">Share with</h4>
             <input name="user" placeholder="Username" type="text">
             <select name="status">
                 <option value="1">Allow to view only</option>
@@ -25,9 +36,7 @@
     </form>
     <div class="flex-column tasks" >
         {% for object in objects %}
-            <p share='{% for user in object.share.all %}{{user}} {% endfor %}' class="task" value='{{object.title}}' id="{{object.id}}" created_at='{{object.created_at}}' onclick="open_bar('{{object.id}}',this)" type="text">{{object.title}}</p>
-            
-
+            <p share='{% for user in object.share.all %}{{user}} {% endfor %}' expired_at='{{object.expired_at}}' description='{{object.description}}' class="task" value='{{object.title}}' id="{{object.id}}" created_at='{{object.created_at}}' onclick="open_bar('{{object.id}}',this)" type="text">{{object.title}} <a href="/task/{{object.id}}/">Detail</a></p>
         {% endfor %}
     </div>
 {% endblock %}
@@ -47,16 +56,42 @@
             console.log(formData)
             $.ajax({
                 method : 'PATCH',
-                url: `http://127.0.0.1:8000/api/task/${task_id}/`, 
+                url: `http://{{request.META.HTTP_HOST}}/api/task/${task_id}/`, 
                 data : formData, 
                 headers:{
                     'X-CSRFToken': token,
-                    'Access-Control-Allow-Origin':'http://localhost:8000',
-                    'Access-Control-Allow-Credentials':'true',
                 },
                 success : function(e){
+                    alert("SUCCESSFULLY CHANGED")
                     console.log(e);
-                    $(`.task[id ="${task_id}"]`).text(title)
+                    $(`.task[id ="${task_id}"]`).attr('value',title)
+                    $(`.task[id ="${task_id}"]`).html(title+`<a href="/task/${task_id}/">Detail</a>`)
+                },
+                error:function(e){
+                    console.log(e);
+                }
+            })
+        }
+        
+        $('.description_task').on('click', function(){
+            description=$('input[name="description"]').val()
+
+            var formData = {
+                'description' : description,
+                // 'csrfmiddlewaretoken':token,
+            };
+            console.log(formData)
+            $.ajax({
+                method : 'PATCH',
+                url: `http://{{request.META.HTTP_HOST}}/api/task/${task_id}/`, 
+                data : formData, 
+                headers:{
+                    'X-CSRFToken': token,
+                },
+                success : function(e){
+                    alert("SUCCESSFULLY CHANGED")
+                    console.log(e);
+                    $(`.task[id ="${task_id}"]`).attr('description',description)
                 },
                 error:function(e){
                     console.log(e);
@@ -64,22 +99,28 @@
 
             })
             
-        }
+        })
+
+
+
+
+
 
         $('.delete_task').click(function(){
-            alert("YES")
             $.ajax({
                 method : 'DELETE',
-                url: `http://127.0.0.1:8000/api/task/${task_id}/`, 
+                url: `http://{{ request.META.HTTP_HOST}}/api/task/${task_id}/`, 
                 headers:{
                     'X-CSRFToken': token,
                 },
                 success : function(e){
+                    alert("DELETED")
                     console.log(e);
                     $(`.task[id ="${task_id}"]`).remove()
                     close_bar()
                 },
                 error:function(e){
+                    alert("ERROR")
                     console.log(e);
                 }
 
@@ -98,6 +139,7 @@
 
         function open_bar(id,element){
             $('.side_bar').addClass('open_bar')
+            $('input[name="description"]').val($(element).attr('description'))
             $('#bar_input').val($(element).attr('value'))
             task_id=id
         }
@@ -113,7 +155,7 @@
 
             $.ajax({
                 method : 'GET',
-                url: `http://127.0.0.1:8000/api/share/?username=${username}&task_id=${task_id}&status=${status}`, 
+                url: `http://{{ request.META.HTTP_HOST}}/api/share/?username=${username}&task_id=${task_id}&status=${status}`, 
                 headers:{
                     'X-CSRFToken': token,
                 },
@@ -128,7 +170,36 @@
             $("input[name='user']").val('')
         })
     </script>
+    <!-- Deadline -->
+    <script>
+        $('.deadline_task').on('click',function(){
+            var expired_at = $('input[name="expired_at"]').val()
+            // expired_at = 'asd'
 
+            var formData = {
+                'expired_at' : expired_at,
+            };
+            console.log(formData)
+            $.ajax({
+                method : 'PATCH',
+                url: `http://{{ request.META.HTTP_HOST}}/api/task/${task_id}/`, 
+                data : formData, 
+                headers:{
+                    'X-CSRFToken': token,
+                },
+                success : function(e){
+                    alert("SUCCESSFULLY CHANGED")
+                    console.log(e);
+                    // $(`.task[id ="${task_id}"]`).text(title)
+                },
+                error:function(e){
+                    alert("ERROR")
+                    console.log(e);
+                }
+
+            })
+        })
+    </script>
     <script>
         $(document).ready(function(){
             $('form').submit(function(event){
@@ -137,15 +208,16 @@
                 };
                 $.ajax({
                     method : 'POST',
-                    url: 'http://127.0.0.1:8000/api/task/', 
+                    url: 'http://{{ request.META.HTTP_HOST}}/api/task/', 
                     data : formData, 
                     headers:{
                         'X-CSRFToken': token,
-                        'Authorization':token,
+                        // 'Authorization':token,
                     },
                     success : function(object){
+                        alert('SUCCESSFULLY ADDED')
                         console.log(object);
-                        document.querySelector('.tasks').innerHTML+=`<p class="task" value='${object.title}' id="${object.id}" created_at='${object.created_at}' onclick="open_bar('${object.id}',this)" type="text">${object.title}</p>`
+                        document.querySelector('.tasks').innerHTML+=`<p class="task" value='${object.title}' id="${object.id}" description='${object.description}' created_at='${object.created_at}' onclick="open_bar('${object.id}',this)" type="text">${object.title}<a href="/task/${object.id}/">Detail</a></p>`
                     },
                     error:function(e){
                         console.log(e);
@@ -156,5 +228,7 @@
             });
 
         });
+        
     </script>
+    
 {% endblock %}

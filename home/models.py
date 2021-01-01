@@ -14,6 +14,7 @@ class Task(models.Model):
     remind_me=models.BooleanField(default=True)
     is_completed=models.BooleanField(default=False)
     expired_at=models.DateTimeField(blank=True,null=True)
+    celery_id=models.CharField('Celery ID',max_length=255,blank=True,null=True)
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)
 
@@ -25,7 +26,12 @@ class Comment(models.Model):
     user=models.ForeignKey(CustomUser,related_name='comments',on_delete=models.CASCADE)
     task=models.ForeignKey(Task,related_name='comments',on_delete=models.CASCADE)
 
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)
 class Share(models.Model):
     task=models.ForeignKey(Task,related_name='share',on_delete=models.CASCADE)
     user=models.ForeignKey(CustomUser,related_name='share',on_delete=models.CASCADE)
     status=models.IntegerField(choices=STATUS_CHOICES, default=1)  
+
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)

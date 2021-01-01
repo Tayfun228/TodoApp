@@ -13,4 +13,18 @@ class CustomUser(AbstractUser):
   def __str__(self):
       return f'{self.username}'
 
+  
 
+
+class LoginHistory(models.Model):
+  user=models.ForeignKey(CustomUser,related_name='history',on_delete=models.CASCADE)
+  browser=models.CharField('Browser',max_length=255,blank=True,null=True)
+  os=models.CharField('Browser',max_length=255,blank=True,null=True)
+  ip=models.CharField('Browser',max_length=255,blank=True,null=True)
+  device=models.CharField('Browser',max_length=255,blank=True,null=True)
+
+
+  created_at=models.DateTimeField(auto_now_add=True)
+  updated_at=models.DateTimeField(auto_now=True)
+
+  

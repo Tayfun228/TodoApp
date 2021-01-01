@@ -6,8 +6,8 @@ from django.contrib.auth.decorators import login_required
 
 urlpatterns = [
     path('', HomeView.as_view(),name='home'),
-    path('todo/', login_required(ToDoView.as_view()),name='todo'),
-    path('task/<int:pk>/', login_required(TaskDetailView.as_view()),name='task-detail'),
+    path('todo/', ToDoView.as_view(),name='todo'),
+    path('task/<int:pk>/', TaskDetailView.as_view(),name='task-detail'),
 
 
     # path('', LoginView.as_view(template_name='login.html'),name='login'),

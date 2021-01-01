@@ -26,9 +26,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'ewkjn@ksd#!120yf$svpa+%%w$=hy9nu@ps#^+2^&+zcugoywp'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = bool(os.environ.get('DEBUG'))
-DEBUG = bool(not os.environ.get('DEBUG', False))
+DEBUG = not os.environ.get('DEBUG',False)
+# DEBUG=True
+# DEBUG = bool(not os.environ.get('DEBUG', False))
 PROD = not DEBUG
+
 
 ALLOWED_HOSTS = ['*']
 
@@ -42,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_user_agents',
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
@@ -63,6 +66,8 @@ MIDDLEWARE = [
 
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+
+    'django_user_agents.middleware.UserAgentMiddleware',
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -112,6 +117,7 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+    pass
 
 
 # Password validation
@@ -139,25 +145,65 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Baku'
 
 USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = True
+USE_TZ = False
+
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+
 if PROD:
-    STATIC_ROOT= os.path.join(BASE_DIR, "static"),
+    STATIC_ROOT= BASE_DIR/"static"
+
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [('redis', 6381)],
+            },
+        },
+    }
+
+    CELERY_BROKER_URL = 'redis://redis:6381'
+    CELERY_RESULT_BACKEND = 'redis://redis:6381'
+    CELERY_ACCEPT_CONTENT = ['application/json']
+    CELERY_TASK_SERIALIZER = 'json'
+    CELERY_RESULT_SERIALIZER = 'json'
+    CELERY_TIMEZONE = 'Asia/Baku'
+
 else:
-    STATICFILES_DIRS = [
-        os.path.join(BASE_DIR, "static"),
-    ]
+    STATIC_ROOT= BASE_DIR/"static"
+    # STATICFILES_DIRS = [
+    #     BASE_DIR/"static",
+    # ]
+
+    CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
+    CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'
+    CELERY_ACCEPT_CONTENT = ['application/json']
+    CELERY_TASK_SERIALIZER = 'json'
+    CELERY_RESULT_SERIALIZER = 'json'
+    CELERY_TIMEZONE = 'Asia/Baku'
+
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [('localhost', 6379)],
+            },
+        },
+    }
+
+
+# 
 AUTH_USER_MODEL = 'account.CustomUser'
 
 # REST_FRAMEWORK = {
@@ -170,55 +216,31 @@ LOGIN_REDIRECT_URL='/'
 # Channels
 
 ASGI_APPLICATION = "todo.asgi.application"
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [('redis', 6381)],
-        },
-    },
-}
-# CHANNEL_LAYERS = {
-#     'default': {
-#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
-#         'CONFIG': {
-#             "hosts": [('localhost', 6379)],
-#         },
-#     },
-# }
 
 
-CELERY_BROKER_URL = 'redis://redis:6381'
-CELERY_RESULT_BACKEND = 'redis://redis:6381'
-CELERY_ACCEPT_CONTENT = ['application/json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'Africa/Nairobi'
 
-# CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
-# CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'
-# CELERY_ACCEPT_CONTENT = ['application/json']
-# CELERY_TASK_SERIALIZER = 'json'
-# CELERY_RESULT_SERIALIZER = 'json'
-# CELERY_TIMEZONE = 'Africa/Nairobi'
 
 
 
 REST_FRAMEWORK = {
-   'DEFAULT_AUTHENTICATION_CLASSES': (
-       'rest_framework.authentication.TokenAuthentication',
-   ),
-   'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAdminUser'
-   ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    )
+}
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:8000',
+    }
 }
 
-# REST_FRAMEWORK = {
-#    'DEFAULT_PERMISSION_CLASSES': ( 'rest_framework.permissions.IsAdminUser', ),
-# }
+USER_AGENTS_CACHE = 'default'
 
-# REST_FRAMEWORK = {
-#     'DEFAULT_AUTHENTICATION_CLASSES': (
-#         'rest_framework.authentication.SessionAuthentication',
-#     )
-# }
+EMAIL_BACKEND ='django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = '@gmail.com'
+EMAIL_HOST_PASSWORD = ''

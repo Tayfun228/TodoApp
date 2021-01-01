@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
-from account.models import CustomUser
+from account.models import CustomUser, LoginHistory
 
 # Register your models here.
 
@@ -27,3 +27,4 @@ class MyUserAdmin(UserAdmin):
 
 # admin.site.unregister(User)
 admin.site.register(CustomUser, MyUserAdmin)
+admin.site.register(LoginHistory)

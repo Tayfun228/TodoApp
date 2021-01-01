@@ -4,10 +4,20 @@ from rest_framework.response import Response
 from django.http import JsonResponse
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework import viewsets
+from rest_framework.views import APIView
 from rest_framework import permissions
+from django.conf import settings
 from api.serializers import TaskSerializer, UserSerializer
 from home.models import Task, Share
+from home.tasks import set_expired_at
 from account.models import CustomUser
+from datetime import timedelta,datetime
+import pytz
+from celery import uuid
+from celery.worker.control import revoke
+from todo.celery import app
+
+
 
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all().order_by('-created_at')
@@ -41,7 +51,55 @@ class TaskViewSet(viewsets.ModelViewSet):
             error_msg = 'It is not your task'
             return Response({'error': error_msg}, status=status.HTTP_400_BAD_REQUEST)
 
-        return super(TaskViewSet,self).update(request, *args, **kwargs)
+        # CHECK Finished
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        instance = self.get_object()
+        self.perform_update(serializer)
+
+        if 'expired_at' in request.data:
+            print("YESSSSSss")
+            
+            expired_at=request.data['expired_at']
+            if instance.celery_id:
+                print('yes varrrrrrrrrrrrrrrr')
+                # app.control.revoke(state='ALL_STATES',task_id=instance.celery_id, terminate=True, signal='SIGKILL')
+                app.control.revoke(task_id=instance.celery_id)
+
+
+            d2 = datetime.fromisoformat(expired_at)-timedelta(minutes=10)
+            eta2=self.EtaWithTZ(str(d2))
+            print('eta',eta2)
+            task_id = uuid()
+            print(task_id)
+            set_expired_at.s(email=instance.user.email,id=instance.id, title=instance.title).apply_async(task_id=task_id,eta=eta2)
+            instance.celery_id=task_id
+            instance.save()
+        
+            print('errror verdi')
+    
+
+
+
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
+
+    
+
+        # return super(TaskViewSet,self).update(request, *args, **kwargs)
+    
+    def EtaWithTZ(self,value):
+        TZ = pytz.timezone(settings.CELERY_TIMEZONE)
+        ETA = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+        return TZ.localize(ETA)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
@@ -52,6 +110,7 @@ class UserViewSet(viewsets.ModelViewSet):
     #     return queryset
 
     def dispatch(self, request, *args, **kwargs):
+
         msg = 'It was failed'
         username=self.request.GET['username']
         task_id=self.request.GET['task_id']
@@ -86,3 +145,19 @@ class UserViewSet(viewsets.ModelViewSet):
         return JsonResponse({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
 
         # return super(UserViewSet,self).dispatch(request, *args, **kwargs)
+
+
+
+# class ExpiredAt(APIView):
+#     model=Task
+
+#     def post(self, request, pk):
+#         print(request.data)
+#         task_object = self.model.objects.filter(id=pk).frst()
+
+#         serializer = TaskSerializer(task_object, data=request.data, partial=True)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return JsonResponse(code=201, data=serializer.data)
+#         return JsonResponse(code=400, data="wrong parameters")
+

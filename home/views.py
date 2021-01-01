@@ -2,16 +2,20 @@ from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.http import HttpResponseRedirect
 from django.views.generic import ListView, TemplateView, ListView,DetailView
+from django.contrib.auth.mixins import LoginRequiredMixin
 from home.models import Task, Share
-from home.tasks import add
+from home.tasks import *
+
+
 # Create your views here.
+
 
 class HomeView(TemplateView):
     template_name='home.html'
 
     def get(self, request, *args, **kwargs):
         print("YEAH BOY")
-        add.delay()
+        # expired_at.delay()
         if request.user.is_authenticated:
             return HttpResponseRedirect(reverse_lazy('todo'))
             
@@ -21,7 +25,7 @@ class HomeView(TemplateView):
 
         return super(HomeView, self).get(request, *args, **kwargs)
 
-class ToDoView(ListView):
+class ToDoView(LoginRequiredMixin, ListView):
     template_name='todo.html'
     queryset=[]
     context_object_name = 'objects'
@@ -30,7 +34,7 @@ class ToDoView(ListView):
         self.queryset = Task.objects.filter(user=self.request.user)
         return self.queryset 
 
-class TaskDetailView(DetailView):
+class TaskDetailView(LoginRequiredMixin, DetailView):
     template_name='task-detail.html'
     model=Task
 
