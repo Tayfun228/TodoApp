@@ -63,6 +63,14 @@ services:
       # - REDIS_HOST='redis'
       # - DJANGO_SETTINGS_MODULE=todo.settings
 
+  migration:
+    image: "todo:latest"
+    command: bash -c "python manage.py makemigrations && python manage.py migrate"
+    depends_on:
+      - postgres
+      - daphne
+
+
   redis:
     image: redis
     restart: "always"
